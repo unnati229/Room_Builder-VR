@@ -1,0 +1,186 @@
+using UnityEngine;
+using UnityEngine.UI; 
+
+public class Arrow : MonoBehaviour
+{
+    public GameObject chairPrefab;
+    public GameObject sofaPrefab;
+    public GameObject tablePrefab;
+    public GameObject bedPrefab;
+    public GameObject sidetblPrefab;
+
+    public GameObject canvas1;
+    public RectTransform panel;
+    public ScrollRect scrollRect;
+
+    public FirstPersonController Bob; // Assign this in the Inspector or find it dynamically
+    private Rigidbody bobBody;
+    private int selectedIndex = 0;
+    private GameObject[] items;
+    private bool objselected;
+//    public GameObject Selected;
+    public float moveSpeed = 5f;
+
+    public KeyCode openDialogBox=KeyCode.I;
+    public KeyCode placeObject=KeyCode.E;
+
+    void Start()
+    {
+        // Find Bob if not assigned in the Inspector
+        if (Bob == null)
+        {
+            Bob = FindObjectOfType<FirstPersonController>();
+        }
+
+        // Get the Rigidbody component from Bob
+        bobBody = Bob.GetComponent<Rigidbody>();
+        if (bobBody == null)
+        {
+            Debug.LogError("Bob does not have a Rigidbody component!");
+        }
+
+        // Disable the canvas at the start
+        if (canvas1 != null)
+        {
+            canvas1.gameObject.SetActive(false);
+        }
+
+        if (panel != null)
+        {
+            items = new GameObject[panel.childCount];
+            for (int i = 0; i < panel.childCount; i++)
+            {
+                items[i] = panel.GetChild(i).gameObject;
+            }
+        }
+        bool objselected = false;
+    }
+
+    void Update()
+    {
+        // Ensure all required references are valid
+        if (canvas1 != null && panel != null && bobBody != null && Camera.main != null)
+        {
+            // Toggle the canvas when pressing the 'I' key
+            if (Input.GetKeyDown(openDialogBox))
+            {
+                canvas1.gameObject.SetActive(!canvas1.activeSelf); // Toggle UI
+
+                if (canvas1.activeSelf)
+                {
+                    // Calculate the position for the panel
+                    PlacePanelInFrontOfCamera();
+
+                    // Select the first item by default
+                    selectedIndex = 0;
+                    UpdateSelection();
+                }
+            }
+            if (canvas1.activeSelf)
+            {
+                // Scroll using the mouse wheel
+                float scrollInput = Input.GetAxis("Mouse ScrollWheel");
+                if (scrollInput > 0) // Scrolling up
+                {
+                    selectedIndex = Mathf.Max(0, selectedIndex - 1);
+                    UpdateSelection();
+                }
+                else if (scrollInput < 0) // Scrolling down
+                {
+                    selectedIndex = Mathf.Min(items.Length - 1, selectedIndex + 1);
+                    UpdateSelection();
+                }
+
+                // Confirm selection with the Enter key
+                if (Input.GetKeyDown(placeObject))
+                {
+                    ConfirmSelection();
+                    bool objselected = true;
+                }
+            }
+            // if (objselected)
+            // {
+            //     if (Input.GetKeyDown(KeyCode.Space))
+            //     {
+            //         Vector3 forw = bobBody.transform.forward;
+            //         Vector3 forwardMovement = forw * moveSpeed * Time.deltaTime;
+            //     }
+            // }
+
+            
+        }
+        else
+        {
+            Debug.LogError("One or more required references are missing!");
+        }
+    }
+
+    void PlacePanelInFrontOfCamera()
+    {
+        // Get the camera's position and forward direction
+        Vector3 cameraPosition = Camera.main.transform.position;
+        Vector3 cameraForward = Camera.main.transform.forward;
+        Vector3 cameraRight = Camera.main.transform.right;
+
+        // Calculate the position in front of the camera and slightly to the right
+        float distanceFromCamera = 1f; // Distance from the camera
+        float rightOffset = 1f; // Offset to the right
+        Vector3 panelPosition = cameraPosition + cameraForward * distanceFromCamera + cameraRight * rightOffset;
+
+        // Convert the world position to screen space
+        Vector3 screenPosition = Camera.main.WorldToScreenPoint(panelPosition);
+
+        // Set the panel's position
+        panel.position = screenPosition;
+    }
+
+    void UpdateSelection()
+    {
+        // Highlight the selected item
+        for (int i = 0; i < items.Length; i++)
+        {
+            if (i == selectedIndex)
+            {
+                items[i].GetComponent<Image>().color = Color.yellow; // Highlight selected item
+            }
+            else
+            {
+                items[i].GetComponent<Image>().color = Color.white; // Reset other items
+            }
+        }
+
+        // Ensure the selected item is visible in the scroll view
+        if (scrollRect != null)
+        {
+            scrollRect.verticalNormalizedPosition = 1 - (selectedIndex / (float)(items.Length - 1));
+        }
+    }
+
+    void ConfirmSelection()
+    {
+        // Perform an action based on the selected item
+        Debug.Log("Selected Item: " + items[selectedIndex].name);
+
+        // Example: Instantiate the selected prefab
+        Vector3 forw = bobBody.transform.forward;
+        switch (selectedIndex)
+        {
+            case 0:
+                Instantiate(chairPrefab, bobBody.position + forw * 20f, Quaternion.identity);
+                break;
+            case 1:
+                Instantiate(sofaPrefab, bobBody.position + forw * 50f, Quaternion.identity);
+                break;
+            case 2:
+                Instantiate(tablePrefab, bobBody.position + forw * 5f, Quaternion.identity);
+                break;
+            case 3:
+                Instantiate(bedPrefab, bobBody.position + forw * 5f, Quaternion.identity);
+                break;
+            case 4:
+                Instantiate(sidetblPrefab, bobBody.position + forw * 5f, Quaternion.identity);
+                break;
+        }
+    }
+
+}
